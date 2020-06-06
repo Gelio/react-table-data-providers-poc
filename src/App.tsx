@@ -13,15 +13,26 @@ import { FunctionalTableStateProvider } from './state/functional-state-provider'
 import { functionalTableDataProviderFactory } from './data/functional-data-provider';
 import { getRefResolvingDataFactory } from './data/ref-resolving-data-factory';
 import { interval } from 'rxjs';
+import {
+  TableDataGetter$,
+  liftPreviousGetDataHandler,
+  getRefResolvingDataFactoryWithStreams,
+  functionalParamsTableDataProviderFactory,
+} from './receive-params-stream/params-stream-state-provider';
+import { lift } from 'ramda';
 
-const dataGetters: Record<string, TableDataGetter<Todo>> = {
-  serverside: getTodosFactory(
-    mapParamsToQueryStringFactory({ pagination: true, searching: true })
+const dataGetters: Record<string, TableDataGetter$<Todo>> = {
+  serverside: liftPreviousGetDataHandler(
+    getTodosFactory(
+      mapParamsToQueryStringFactory({ pagination: true, searching: true })
+    )
   ),
   // NOTE: simulate that some number is needed (can be fetched from the network)
-  serversideWithReferences: getRefResolvingDataFactory(
-    getTodosFactory(
-      mapParamsToQueryStringFactory({ pagination: true, searching: false })
+  serversideWithReferences: getRefResolvingDataFactoryWithStreams(
+    liftPreviousGetDataHandler(
+      getTodosFactory(
+        mapParamsToQueryStringFactory({ pagination: true, searching: true })
+      )
     ),
     {
       someNumber: interval(1000),
@@ -40,33 +51,37 @@ const dataGetters: Record<string, TableDataGetter<Todo>> = {
       }));
     }
   ),
-  clientside: getClientsidePaginatedDataFactory(
-    getTodosFactory(
-      mapParamsToQueryStringFactory({ pagination: false, searching: false })
-    ),
-    (todo, searchPhrase) => todo.title.includes(searchPhrase)
-  ),
-  // NOTE: simulate that when resolving references,
-  clientsideWithReferences: getClientsidePaginatedDataFactory(
-    getRefResolvingDataFactory(
+  clientside: liftPreviousGetDataHandler(
+    getClientsidePaginatedDataFactory(
       getTodosFactory(
         mapParamsToQueryStringFactory({ pagination: false, searching: false })
       ),
-      {
-        someNumber: interval(1000),
-      },
-      (todos, { someNumber }) => {
-        return todos.map((todo, index) => ({
-          ...todo,
-          title:
-            todo.title +
-            (someNumber !== null && index % 2 === 0
-              ? ` --- data from ref: ${(someNumber as number) * index}`
-              : ''),
-        }));
-      }
-    ),
-    (todo, searchPhrase) => todo.title.includes(searchPhrase)
+      (todo, searchPhrase) => todo.title.includes(searchPhrase)
+    )
+  ),
+  // NOTE: simulate that when resolving references,
+  clientsideWithReferences: liftPreviousGetDataHandler(
+    getClientsidePaginatedDataFactory(
+      getRefResolvingDataFactory(
+        getTodosFactory(
+          mapParamsToQueryStringFactory({ pagination: false, searching: false })
+        ),
+        {
+          someNumber: interval(1000),
+        },
+        (todos, { someNumber }) => {
+          return todos.map((todo, index) => ({
+            ...todo,
+            title:
+              todo.title +
+              (someNumber !== null && index % 2 === 0
+                ? ` --- data from ref: ${(someNumber as number) * index}`
+                : ''),
+          }));
+        }
+      ),
+      (todo, searchPhrase) => todo.title.includes(searchPhrase)
+    )
   ),
 };
 
@@ -76,7 +91,7 @@ export default function App() {
     dataGetterVariant,
   ]);
   const dataProviderFactory = useMemo(
-    () => functionalTableDataProviderFactory(dataGetter),
+    () => functionalParamsTableDataProviderFactory(dataGetter),
     [dataGetter]
   );
   const stateProvider = useMemo(

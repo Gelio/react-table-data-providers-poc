@@ -62,7 +62,7 @@ export class FunctionalTableStateProvider<RowType> {
         // TODO: set `maxPage`
         // TODO: reset `expandedRowsKeys` and `selectedRowsKeys`
 
-        if (!data.loading && data.rows?.length === 0 && page > 0) {
+        if (!data.loading && data.rows?.length === 0 && page > 1) {
           // TODO: Ideally, go to maxPage - 1
           this.setPage(1);
         }
