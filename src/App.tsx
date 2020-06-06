@@ -102,7 +102,7 @@ function TodoList({ data }: TodoListProps) {
   }
 
   if (data.error) {
-    return <div>Error: {data.error}</div>;
+    return <div>Error: {data.error.message}</div>;
   }
 
   return (
