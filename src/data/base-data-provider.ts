@@ -5,8 +5,8 @@ import { v4 as uuid } from 'uuid';
 import {
   TableDataProvider,
   TableData$,
-  TableDataParams,
   TableDataGetter,
+  TableDataParamsWithRequestId,
 } from './types';
 
 export class BaseDataProvider<RowData> implements TableDataProvider<RowData> {
@@ -24,7 +24,12 @@ export class BaseDataProvider<RowData> implements TableDataProvider<RowData> {
     this.requestIdSubject
   ).pipe(
     map(
-      ([pageSize, page, searchPhrase, requestId]): TableDataParams => ({
+      ([
+        pageSize,
+        page,
+        searchPhrase,
+        requestId,
+      ]): TableDataParamsWithRequestId => ({
         pageSize,
         page,
         searchPhrase,

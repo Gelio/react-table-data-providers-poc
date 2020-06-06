@@ -13,11 +13,19 @@ export interface TableDataParams {
   pageSize: number;
   page: number;
   searchPhrase: string;
+}
 
+export interface TableDataParamsWithRequestId extends TableDataParams {
   // NOTE: used to trigger refetches. If requestId changed, force sending the request
   // Used in clientside pagination
   requestId: string;
 }
+
+export type TableDataGetter<RowData> = (
+  params: TableDataParamsWithRequestId
+) => TableData$<RowData>;
+
+// ---------------------------------------
 
 export interface TableDataProvider<RowData> {
   setPageSize(pageSize: number): void;
@@ -28,6 +36,14 @@ export interface TableDataProvider<RowData> {
   tableData$: TableData$<RowData>;
 }
 
-export type TableDataGetter<RowData> = (
-  params: TableDataParams
-) => TableData$<RowData>;
+// ---------------------------------------
+
+export interface FunctionalTableDataProvider<RowData> {
+  refresh(): void;
+
+  tableData$: TableData$<RowData>;
+}
+
+export type FunctionalTableDataProviderFactory<RowData> = (
+  params$: Observable<TableDataParams>
+) => FunctionalTableDataProvider<RowData>;

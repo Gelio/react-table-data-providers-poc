@@ -10,7 +10,11 @@ import {
   share,
 } from 'rxjs/operators';
 
-import { TableDataGetter, TableDataParams, TableData } from './types';
+import {
+  TableDataGetter,
+  TableData,
+  TableDataParamsWithRequestId,
+} from './types';
 
 // TODO: how to swap the filter function without creating a new DataGetter?
 
@@ -21,9 +25,11 @@ export const getClientsidePaginatedDataFactory = <RowData>(
   // TODO: handle `sortingRules` as a 2nd parameter
   sortData: (rows: RowData[]) => RowData[] = identity
 ): TableDataGetter<RowData> => {
-  const paramsSubject = new BehaviorSubject<TableDataParams | null>(null);
+  const paramsSubject = new BehaviorSubject<TableDataParamsWithRequestId | null>(
+    null
+  );
   const params$ = paramsSubject.pipe(filter((x) => !!x)) as Observable<
-    TableDataParams
+    TableDataParamsWithRequestId
   >;
   const allTableData$ = params$.pipe(
     distinctUntilKeyChanged('requestId'),
@@ -65,7 +71,7 @@ export const getClientsidePaginatedDataFactory = <RowData>(
 };
 
 function getCurrentPageRows<RowData>(
-  params$: Observable<TableDataParams>,
+  params$: Observable<TableDataParamsWithRequestId>,
   tableRows$: Observable<RowData[]>
 ) {
   const page$ = params$.pipe(pluck('page'), distinctUntilChanged());
@@ -82,7 +88,7 @@ function getCurrentPageRows<RowData>(
 }
 
 function getFilteredTableRows<RowData>(
-  params$: Observable<TableDataParams>,
+  params$: Observable<TableDataParamsWithRequestId>,
   allTableData$: Observable<TableData<RowData>>,
   filterData: (row: RowData, searchPhrase: string) => boolean
 ) {

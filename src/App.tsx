@@ -11,6 +11,8 @@ import {
 } from './example';
 import { TableData, TableDataGetter } from './data/types';
 import { getClientsidePaginatedDataFactory } from './data/clientside-pagination';
+import { FunctionalTableStateProvider } from './state/functional-state-provider';
+import { functionalTableDataProviderFactory } from './data/functional-data-provider';
 
 const dataGetters: Record<string, TableDataGetter<Todo>> = {
   serverside: getTodosFactory(
@@ -29,24 +31,24 @@ export default function App() {
   const dataGetter = useMemo(() => dataGetters[dataGetterVariant], [
     dataGetterVariant,
   ]);
-  const dataProvider = useMemo(() => new BaseDataProvider(dataGetter), [
-    dataGetter,
-  ]);
-  const stateProvider = useMemo(() => new TableStateProvider(dataProvider), [
-    dataProvider,
-  ]);
+  const dataProvider = useMemo(
+    () => functionalTableDataProviderFactory(dataGetter),
+    [dataGetter]
+  );
+  const stateProvider = useMemo(
+    () => new FunctionalTableStateProvider(dataProvider),
+    [dataProvider]
+  );
 
   const [tableState, error] = useObservable(stateProvider.tableStateWithData$);
 
   useEffect(() => {
     // NOTE: initial fetch
-    dataProvider.refresh();
+    stateProvider.refresh();
   }, [dataProvider]);
 
-  const moveToPreviousPage = () =>
-    stateProvider.setPage(tableState!.currentPage - 1);
-  const moveToNextPage = () =>
-    stateProvider.setPage(tableState!.currentPage + 1);
+  const moveToPreviousPage = () => stateProvider.setPage(tableState!.page - 1);
+  const moveToNextPage = () => stateProvider.setPage(tableState!.page + 1);
 
   return (
     <div className="App">
@@ -82,7 +84,7 @@ export default function App() {
       <h3>Todos</h3>
       <div>
         <button onClick={moveToPreviousPage}>&lt;</button>
-        {tableState?.currentPage}
+        {tableState?.page}
         <button onClick={moveToNextPage}>&gt;</button>
       </div>
 
