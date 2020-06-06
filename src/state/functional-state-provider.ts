@@ -22,6 +22,7 @@ interface TableStateWithData<RowType>
 type TableStateWithData$<RowType> = Observable<TableStateWithData<RowType>>;
 
 export class FunctionalTableStateProvider<RowType> {
+  // TODO: use granular subjects for individual pieces of state
   private dataParamsSubject = new BehaviorSubject<TableDataParams>({
     page: 1,
     pageSize: 15,

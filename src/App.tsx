@@ -1,8 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import './App.css';
 
-import { TableStateProvider } from './state/state-provider';
-import { BaseDataProvider } from './data/base-data-provider';
 import { useObservable } from './utils/use-observable';
 import {
   Todo,
@@ -13,14 +11,60 @@ import { TableData, TableDataGetter } from './data/types';
 import { getClientsidePaginatedDataFactory } from './data/clientside-pagination';
 import { FunctionalTableStateProvider } from './state/functional-state-provider';
 import { functionalTableDataProviderFactory } from './data/functional-data-provider';
+import { getRefResolvingDataFactory } from './data/ref-resolving-data-factory';
+import { interval } from 'rxjs';
 
 const dataGetters: Record<string, TableDataGetter<Todo>> = {
   serverside: getTodosFactory(
     mapParamsToQueryStringFactory({ pagination: true, searching: true })
   ),
+  // NOTE: simulate that some number is needed (can be fetched from the network)
+  serversideWithReferences: getRefResolvingDataFactory(
+    getTodosFactory(
+      mapParamsToQueryStringFactory({ pagination: true, searching: false })
+    ),
+    {
+      someNumber: interval(1000),
+      todos: getTodosFactory(
+        mapParamsToQueryStringFactory({ pagination: true, searching: true })
+      )({ page: 2, pageSize: 10, requestId: '123', searchPhrase: '' }),
+    },
+    (todos, { someNumber }) => {
+      return todos.map((todo, index) => ({
+        ...todo,
+        title:
+          todo.title +
+          (someNumber !== null && index % 2 === 0
+            ? ` --- data from ref: ${(someNumber as number) * index}`
+            : ''),
+      }));
+    }
+  ),
   clientside: getClientsidePaginatedDataFactory(
     getTodosFactory(
       mapParamsToQueryStringFactory({ pagination: false, searching: false })
+    ),
+    (todo, searchPhrase) => todo.title.includes(searchPhrase)
+  ),
+  // NOTE: simulate that when resolving references,
+  clientsideWithReferences: getClientsidePaginatedDataFactory(
+    getRefResolvingDataFactory(
+      getTodosFactory(
+        mapParamsToQueryStringFactory({ pagination: false, searching: false })
+      ),
+      {
+        someNumber: interval(1000),
+      },
+      (todos, { someNumber }) => {
+        return todos.map((todo, index) => ({
+          ...todo,
+          title:
+            todo.title +
+            (someNumber !== null && index % 2 === 0
+              ? ` --- data from ref: ${(someNumber as number) * index}`
+              : ''),
+        }));
+      }
     ),
     (todo, searchPhrase) => todo.title.includes(searchPhrase)
   ),
@@ -31,13 +75,13 @@ export default function App() {
   const dataGetter = useMemo(() => dataGetters[dataGetterVariant], [
     dataGetterVariant,
   ]);
-  const dataProvider = useMemo(
+  const dataProviderFactory = useMemo(
     () => functionalTableDataProviderFactory(dataGetter),
     [dataGetter]
   );
   const stateProvider = useMemo(
-    () => new FunctionalTableStateProvider(dataProvider),
-    [dataProvider]
+    () => new FunctionalTableStateProvider(dataProviderFactory),
+    [dataProviderFactory]
   );
 
   const [tableState, error] = useObservable(stateProvider.tableStateWithData$);
@@ -45,7 +89,7 @@ export default function App() {
   useEffect(() => {
     // NOTE: initial fetch
     stateProvider.refresh();
-  }, [dataProvider]);
+  }, [stateProvider]);
 
   const moveToPreviousPage = () => stateProvider.setPage(tableState!.page - 1);
   const moveToNextPage = () => stateProvider.setPage(tableState!.page + 1);
