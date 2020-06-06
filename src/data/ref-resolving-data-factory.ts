@@ -13,6 +13,8 @@ import { Observable, combineLatest, BehaviorSubject } from 'rxjs';
  * Resolves additional references
  *
  * When refreshing, all references refresh too
+ *
+ * TODO: consider fetching references based on the main entity data
  */
 export const getRefResolvingDataFactory = <RowData, ResolvedRowData>(
   getMainEntityData: TableDataGetter<RowData>,
