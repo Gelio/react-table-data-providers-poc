@@ -1,5 +1,5 @@
 import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 
 import {
   TableData,
@@ -55,7 +55,17 @@ export class FunctionalTableStateProvider<RowType> {
           ...dataParams,
           ...uiOnlyState,
         })
-      )
+      ),
+      tap(({ page, data }) => {
+        // NOTE: run side effects
+        // TODO: set `maxPage`
+        // TODO: reset `expandedRowsKeys` and `selectedRowsKeys`
+
+        if (!data.loading && data.rows?.length === 0 && page > 0) {
+          // TODO: Ideally, go to maxPage - 1
+          this.setPage(1);
+        }
+      })
     );
 
     this.refresh = functionalTableDataProvider.refresh;
