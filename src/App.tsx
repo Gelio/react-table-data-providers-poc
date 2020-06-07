@@ -52,9 +52,9 @@ const resolveTodoReferences: ReferencesResolver<TableDataWithCount<Todo>> = (
 
 const todoReferences = {
   someNumber: interval(1000),
-  todos: getTodosDataGetterFactory(
-    mapParamsToQueryStringFactory({ pagination: true, searching: true })
-  )(of({ page: 2, pageSize: 10, requestId: '123', searchPhrase: '' })),
+  todos: serversideDataGetterWithPagination(
+    of({ page: 2, pageSize: 10, requestId: '123', searchPhrase: '' })
+  ),
 };
 
 const todoFilter: FilterFunction<Todo> = (todo, searchPhrase) =>
@@ -76,7 +76,7 @@ const dataGetters: Record<
     serversideDataGetterWithoutPagination,
     todoFilter
   ),
-  // NOTE: simulate that when resolving references,
+  // NOTE: simulate that some number is needed (can be fetched from the network)
   clientsideWithReferences: getClientsidePaginatedDataGetter(
     getRefResolvingDataGetter(
       serversideDataGetterWithoutPagination,
@@ -102,7 +102,7 @@ export default function App() {
 
   useEffect(() => {
     // NOTE: initial fetch
-    stateProvider.refresh();
+    // stateProvider.refresh();
   }, [stateProvider]);
 
   const moveToPreviousPage = () => stateProvider.setPage(tableState!.page - 1);
