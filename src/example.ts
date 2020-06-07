@@ -1,8 +1,13 @@
 import { ajax } from 'rxjs/ajax';
-import { map, catchError } from 'rxjs/operators';
+import { map, catchError, switchMap } from 'rxjs/operators';
 import { concat, of } from 'rxjs';
 
-import { TableDataGetter, TableData, TableDataParams } from './data/types';
+import {
+  TableDataGetter,
+  DataFetchingState,
+  TableDataParams,
+} from './data/types';
+import { TableDataWithCount } from './data/clientside-paginated-data-getter';
 
 export interface Todo {
   userId: number;
@@ -13,30 +18,49 @@ export interface Todo {
 
 // NOTE: could be customized to fetch various backend resources
 // NOTE: can use backend pagination
-export function getTodosFactory(
+export function getTodosDataGetterFactory(
   mapParamsToQueryString: (params: TableDataParams) => string
-): TableDataGetter<Todo> {
-  return (params) => {
-    const queryParams = mapParamsToQueryString(params);
+): TableDataGetter<TableDataWithCount<Todo>, any> {
+  return (params$) => {
+    const queryParams$ = params$.pipe(map(mapParamsToQueryString));
 
-    // NOTE: possible to add fetching based on parameters
-    return concat(
-      of({ loading: true } as TableData<Todo>),
-      ajax
-        .getJSON<Todo[]>(
-          `https://jsonplaceholder.typicode.com/todos?${queryParams}`
-        )
-        .pipe(
-          map(
-            (todos): TableData<Todo> => ({
-              rows: todos,
-              loading: false,
-            })
-          ),
-          catchError((error) =>
-            of({ loading: false, error } as TableData<Todo>)
-          )
-        )
+    return queryParams$.pipe(
+      switchMap((queryParams) => {
+        return concat(
+          of({ loading: true } as DataFetchingState<
+            TableDataWithCount<Todo>,
+            any
+          >),
+          ajax
+            .getJSON<Todo[]>(
+              `https://jsonplaceholder.typicode.com/todos?${queryParams}`
+            )
+            .pipe(
+              map(
+                (todos): DataFetchingState<TableDataWithCount<Todo>, any> => ({
+                  loading: false,
+                  result: {
+                    type: 'success',
+                    data: {
+                      rows: todos,
+                      // TODO: extract totalCount from response
+                      totalCount: todos.length,
+                    },
+                  },
+                })
+              ),
+              catchError((error) =>
+                of<DataFetchingState<TableDataWithCount<Todo>, any>>({
+                  loading: false,
+                  result: {
+                    type: 'error',
+                    error,
+                  },
+                })
+              )
+            )
+        );
+      })
     );
   };
 }
