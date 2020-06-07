@@ -6,6 +6,7 @@ import {
   filter,
   distinctUntilChanged,
   map,
+  share,
 } from 'rxjs/operators';
 
 import {
@@ -44,7 +45,7 @@ export const getClientsidePaginatedDataGetter = <RowData extends Entity, Error>(
   const paramsWithUniqueRequestId$ = params$.pipe(
     distinctUntilKeyChanged('requestId')
   );
-  const dataFetchingState$ = getData(paramsWithUniqueRequestId$);
+  const dataFetchingState$ = getData(paramsWithUniqueRequestId$).pipe(share());
   const filteredTableRows$ = getFilteredTableRows(
     params$,
     dataFetchingState$,
