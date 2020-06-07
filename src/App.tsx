@@ -17,13 +17,17 @@ import {
   TableDataWithCount,
   FilterFunction,
 } from './data/clientside-paginated-data-getter';
-import { interval, of } from 'rxjs';
+import { interval, of, pipe } from 'rxjs';
 import {
   getRefResolvingDataGetter,
   ReferencesResolver,
 } from './data/ref-resolving-data-getter';
 import { createTableStateProvider } from './data/state-provider';
 import { isDefined } from './utils/is-defined';
+import {
+  composableRefResolvingDataGetter,
+  composableClientsidePaginatedDataGetter,
+} from './data/composable';
 
 const serversideDataGetterWithPagination = getTodosDataGetterFactory(
   mapParamsToQueryStringFactory({ pagination: true, searching: true })
@@ -57,28 +61,6 @@ const todoReferences = {
   ),
 };
 
-/**
- * TODO: consider composing as follows
- *
- * composeDataGetters(
-    mainEntityDataGetter,
-    getRefResolvingDataGetter(todoReferences, resolveTodoReferences),
-    getClientsidePaginatedDataGetter(todoFilter)
-    )
- *
- *
- * equivalent to:
- *
- * getClientsidePaginatedDataGetter(
-    getRefResolvingDataGetter(
-      serversideDataGetterWithoutPagination,
-      todoReferences,
-      resolveTodoReferences
-    ),
-    todoFilter
-  ),
- */
-
 const todoFilter: FilterFunction<Todo> = (todo, searchPhrase) =>
   todo.title.includes(searchPhrase);
 
@@ -107,6 +89,12 @@ const dataGetters: Record<
     ),
     todoFilter
   ),
+
+  // NOTE: experiment with composition
+  composableExperiment: pipe(
+    composableRefResolvingDataGetter(todoReferences, resolveTodoReferences),
+    composableClientsidePaginatedDataGetter(todoFilter)
+  )(serversideDataGetterWithoutPagination),
 };
 
 export default function App() {
