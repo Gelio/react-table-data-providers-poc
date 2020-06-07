@@ -27,6 +27,23 @@ export interface TableDataWithCount<RowData extends Entity> {
   totalCount: number;
 }
 
+/**
+ * TODO: Split single getClientsidePaginatedDataGetter to 3 data getters:
+ * 1. One for paginating the results
+ * 2. One for filtering the results
+ * 3. One for sorting the results
+ *
+ * Then, the getClientsidePaginatedDataGetter could be composed of them.
+ *
+ * Also, they could be composed in other interesting ways and enable the following workflows:
+ * 1. Filter before resolving refs
+ * 2. Filter (based on main entity data) -> resolve refs -> filter based on refs
+ *    More performant than always filtering results after resolving refs.
+ * 3. (skip filtering) Resolve refs -> sort
+ * 4. Sort based on main entity data -> resolve refs
+ *    More performant than always sorting results after resolving refs.
+ */
+
 // NOTE: used for filtering, searching, etc.
 export type FilterFunction<RowData> = (
   row: RowData,
