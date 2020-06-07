@@ -4,84 +4,86 @@ import './App.css';
 import { useObservable } from './utils/use-observable';
 import {
   Todo,
-  getTodosFactory,
   mapParamsToQueryStringFactory,
+  getTodosDataGetterFactory,
 } from './example';
-import { TableData, TableDataGetter } from './data/types';
-import { getClientsidePaginatedDataFactory } from './data/clientside-pagination';
-import { FunctionalTableStateProvider } from './state/functional-state-provider';
-import { functionalTableDataProviderFactory } from './data/functional-data-provider';
-import { getRefResolvingDataFactory } from './data/ref-resolving-data-factory';
-import { interval } from 'rxjs';
 import {
-  TableDataGetter$,
-  liftPreviousGetDataHandler,
-  getRefResolvingDataFactoryWithStreams,
-  functionalParamsTableDataProviderFactory,
-} from './receive-params-stream/params-stream-state-provider';
-import { lift } from 'ramda';
+  TableFetchingResult,
+  TableDataGetter,
+  isFetchingError,
+} from './data/types';
+import {
+  getClientsidePaginatedDataGetter,
+  TableDataWithCount,
+  FilterFunction,
+} from './data/clientside-paginated-data-getter';
+import { interval, of } from 'rxjs';
+import {
+  getRefResolvingDataGetter,
+  ReferencesResolver,
+} from './data/ref-resolving-data-getter';
+import { createTableStateProvider } from './data/state-provider';
+import { isDefined } from './utils/is-defined';
 
-const dataGetters: Record<string, TableDataGetter$<Todo>> = {
-  serverside: liftPreviousGetDataHandler(
-    getTodosFactory(
-      mapParamsToQueryStringFactory({ pagination: true, searching: true })
-    )
-  ),
+const serversideDataGetterWithPagination = getTodosDataGetterFactory(
+  mapParamsToQueryStringFactory({ pagination: true, searching: true })
+);
+
+const serversideDataGetterWithoutPagination = getTodosDataGetterFactory(
+  mapParamsToQueryStringFactory({ pagination: false, searching: false })
+);
+
+const resolveTodoReferences: ReferencesResolver<TableDataWithCount<Todo>> = (
+  todosData,
+  { someNumber }
+) => {
+  return {
+    ...todosData,
+    rows: todosData.rows.map((todo, index) => ({
+      ...todo,
+      title:
+        todo.title +
+        (someNumber !== null && index % 2 === 0
+          ? ` --- data from ref: ${(someNumber as number) * index}`
+          : ''),
+    })),
+  };
+};
+
+const todoReferences = {
+  someNumber: interval(1000),
+  todos: getTodosDataGetterFactory(
+    mapParamsToQueryStringFactory({ pagination: true, searching: true })
+  )(of({ page: 2, pageSize: 10, requestId: '123', searchPhrase: '' })),
+};
+
+const todoFilter: FilterFunction<Todo> = (todo, searchPhrase) =>
+  todo.title.includes(searchPhrase);
+
+const dataGetters: Record<
+  string,
+  TableDataGetter<TableDataWithCount<Todo>, any>
+> = {
+  serverside: serversideDataGetterWithPagination,
+
   // NOTE: simulate that some number is needed (can be fetched from the network)
-  serversideWithReferences: getRefResolvingDataFactoryWithStreams(
-    liftPreviousGetDataHandler(
-      getTodosFactory(
-        mapParamsToQueryStringFactory({ pagination: true, searching: true })
-      )
-    ),
-    {
-      someNumber: interval(1000),
-      todos: getTodosFactory(
-        mapParamsToQueryStringFactory({ pagination: true, searching: true })
-      )({ page: 2, pageSize: 10, requestId: '123', searchPhrase: '' }),
-    },
-    (todos, { someNumber }) => {
-      return todos.map((todo, index) => ({
-        ...todo,
-        title:
-          todo.title +
-          (someNumber !== null && index % 2 === 0
-            ? ` --- data from ref: ${(someNumber as number) * index}`
-            : ''),
-      }));
-    }
+  serversideWithReferences: getRefResolvingDataGetter(
+    serversideDataGetterWithPagination,
+    todoReferences,
+    resolveTodoReferences
   ),
-  clientside: liftPreviousGetDataHandler(
-    getClientsidePaginatedDataFactory(
-      getTodosFactory(
-        mapParamsToQueryStringFactory({ pagination: false, searching: false })
-      ),
-      (todo, searchPhrase) => todo.title.includes(searchPhrase)
-    )
+  clientside: getClientsidePaginatedDataGetter(
+    serversideDataGetterWithoutPagination,
+    todoFilter
   ),
   // NOTE: simulate that when resolving references,
-  clientsideWithReferences: liftPreviousGetDataHandler(
-    getClientsidePaginatedDataFactory(
-      getRefResolvingDataFactory(
-        getTodosFactory(
-          mapParamsToQueryStringFactory({ pagination: false, searching: false })
-        ),
-        {
-          someNumber: interval(1000),
-        },
-        (todos, { someNumber }) => {
-          return todos.map((todo, index) => ({
-            ...todo,
-            title:
-              todo.title +
-              (someNumber !== null && index % 2 === 0
-                ? ` --- data from ref: ${(someNumber as number) * index}`
-                : ''),
-          }));
-        }
-      ),
-      (todo, searchPhrase) => todo.title.includes(searchPhrase)
-    )
+  clientsideWithReferences: getClientsidePaginatedDataGetter(
+    getRefResolvingDataGetter(
+      serversideDataGetterWithoutPagination,
+      todoReferences,
+      resolveTodoReferences
+    ),
+    todoFilter
   ),
 };
 
@@ -90,16 +92,13 @@ export default function App() {
   const dataGetter = useMemo(() => dataGetters[dataGetterVariant], [
     dataGetterVariant,
   ]);
-  const dataProviderFactory = useMemo(
-    () => functionalParamsTableDataProviderFactory(dataGetter),
-    [dataGetter]
-  );
-  const stateProvider = useMemo(
-    () => new FunctionalTableStateProvider(dataProviderFactory),
-    [dataProviderFactory]
-  );
+  const stateProvider = useMemo(() => createTableStateProvider(dataGetter), [
+    dataGetter,
+  ]);
 
-  const [tableState, error] = useObservable(stateProvider.tableStateWithData$);
+  const [tableState, observableError] = useObservable(
+    stateProvider.tableState$
+  );
 
   useEffect(() => {
     // NOTE: initial fetch
@@ -147,28 +146,38 @@ export default function App() {
         <button onClick={moveToNextPage}>&gt;</button>
       </div>
 
-      {error && <div>Error providing table state: {error}</div>}
-      {tableState?.data && <TodoList data={tableState!.data} />}
+      {observableError && (
+        <div>Error providing table state: {observableError}</div>
+      )}
+      {renderResult(tableState?.result)}
     </div>
   );
 }
 
-interface TodoListProps {
-  data: TableData<Todo>;
-}
-
-function TodoList({ data }: TodoListProps) {
-  if (data.loading) {
+function renderResult(
+  result?: TableFetchingResult<TableDataWithCount<Todo>, any>
+) {
+  if (!isDefined(result)) {
     return <div>Loading...</div>;
   }
+  if (isFetchingError(result)) {
+    console.error(result.error);
+    return <div>Fetching error. See the console</div>;
+  }
 
-  if (data.error) {
-    return <div>Error: {data.error.message}</div>;
+  return <TodoList data={result.data} />;
+}
+
+function TodoList({ data }: { data: TableDataWithCount<Todo> }) {
+  const { rows } = data;
+
+  if (rows.length === 0) {
+    return <div>No data matches criteria.</div>;
   }
 
   return (
     <ul>
-      {data.rows?.map((row) => (
+      {data.rows.map((row) => (
         <li key={row.id}>{row.title}</li>
       ))}
     </ul>
