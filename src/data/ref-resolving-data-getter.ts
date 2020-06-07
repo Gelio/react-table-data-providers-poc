@@ -1,6 +1,6 @@
 import { Observable, combineLatest } from 'rxjs';
 
-import { TableDataGetter, DataFetchingState } from './types';
+import { TableDataGetter, DataFetchingState, isFetchingError } from './types';
 import {
   map,
   distinctUntilChanged,
@@ -8,6 +8,13 @@ import {
   startWith,
   pluck,
 } from 'rxjs/operators';
+import { isDefined } from '../utils/is-defined';
+
+export type ReferencesResolver<Data, ResolvedData = Data> = (
+  mainEntityData: Data,
+  // TODO: add types for references
+  referencesData: Record<string, unknown | null>
+) => ResolvedData;
 
 /**
  * Resolves additional references
@@ -16,18 +23,11 @@ import {
  *
  * TODO: consider fetching references based on the main entity data
  */
-export const getRefResolvingDataGetter = <
-  Data,
-  ResolvedData extends Data,
-  Error
->(
+export const getRefResolvingDataGetter = <Data, ResolvedData, Error>(
   getMainEntityData: TableDataGetter<Data, Error>,
   // TODO: add types for references
   references: Record<string, Observable<unknown>>,
-  resolveReferences: (
-    mainEntityData: Data,
-    referencesData: Record<string, unknown | null>
-  ) => ResolvedData
+  resolveReferences: ReferencesResolver<Data, ResolvedData>
 ): TableDataGetter<ResolvedData, Error> => (params$) => {
   const referencesKeys = Object.keys(references);
 
@@ -60,9 +60,15 @@ export const getRefResolvingDataGetter = <
         ResolvedData,
         Error
       > => {
-        if (dataFetchingState.result.type === 'error') {
+        if (
+          !isDefined(dataFetchingState.result) ||
+          isFetchingError(dataFetchingState.result)
+        ) {
           // NOTE: in error state there is no data. Thus, it is safe to change the type.
-          return dataFetchingState as DataFetchingState<ResolvedData, Error>;
+          return (dataFetchingState as unknown) as DataFetchingState<
+            ResolvedData,
+            Error
+          >;
         }
 
         return {
