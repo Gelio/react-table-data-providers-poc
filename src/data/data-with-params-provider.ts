@@ -12,10 +12,6 @@ const initialTableDataParams: TableDataParams = {
   searchPhrase: '',
 };
 
-interface Entity {
-  id: number;
-}
-
 export interface TableDataParamsOperations {
   setPageSize(pageSize: number): void;
   setPage(page: number): void;
@@ -26,16 +22,19 @@ export interface TableDataParamsOperations {
 export type TableDataWithParams<Data, Error> = TableDataParams &
   DataFetchingState<Data, Error>;
 
+// TODO: add running side effects based on the response
+// E.g. set `page` = `maxPage - 1` when there are no entities on the last page
+
 export class TableDataWithParamsProvider<Data, Error>
   implements TableDataParamsOperations {
-  public tableState$: Observable<TableDataWithParams<Data, Error>>;
+  public tableDataWithParams$: Observable<TableDataWithParams<Data, Error>>;
   private dataParams = getUpdatableStream(initialTableDataParams);
 
   public constructor(getData: TableDataGetter<Data, Error>) {
     const dataParams$ = this.dataParams.stream$;
     const data$ = getData(dataParams$);
 
-    this.tableState$ = combineLatest([data$, dataParams$]).pipe(
+    this.tableDataWithParams$ = combineLatest([data$, dataParams$]).pipe(
       map(
         ([data, dataParams]): TableDataWithParams<Data, Error> => ({
           ...data,
