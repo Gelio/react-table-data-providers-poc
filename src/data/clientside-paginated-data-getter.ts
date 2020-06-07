@@ -42,6 +42,11 @@ export interface TableDataWithCount<RowData extends Entity> {
  * 3. (skip filtering) Resolve refs -> sort
  * 4. Sort based on main entity data -> resolve refs
  *    More performant than always sorting results after resolving refs.
+ *
+ *
+ * TODO: consider augmenting the type of `params$` when applying `getData` decorators
+ * E.g. when using client-side pagination or server-side pagination, add `pageSize` and `page`
+ * If not using any of the above, do not add those properties.
  */
 
 // NOTE: used for filtering, searching, etc.
