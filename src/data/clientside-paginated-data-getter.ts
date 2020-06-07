@@ -15,6 +15,7 @@ import {
   TableDataParams,
   isFetchingError,
 } from './types';
+import { isDefined } from '../utils/is-defined';
 
 export interface Entity {
   id: number;
@@ -98,10 +99,6 @@ function getCurrentPageRows<RowData>(
       return rows.slice(pageStartIndex, pageEndIndex);
     })
   );
-}
-
-function isDefined<T>(x: T): x is Exclude<T, null | undefined> {
-  return !!x;
 }
 
 function getFilteredTableRows<RowData extends Entity, Error>(
