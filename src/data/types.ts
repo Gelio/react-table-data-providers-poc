@@ -1,12 +1,33 @@
 import { Observable } from 'rxjs';
 
+export interface FetchingSuccess<Data> {
+  type: 'success';
+  data: Data;
+}
+
+export interface FetchingError<Error> {
+  type: 'error';
+  error: Error;
+}
+
+export function isFetchingSuccess<Data, Error>(
+  fetchingResult: TableFetchingResult<Data, Error>
+): fetchingResult is FetchingSuccess<Data> {
+  return fetchingResult.type === 'success';
+}
+export function isFetchingError<Data, Error>(
+  fetchingResult: TableFetchingResult<Data, Error>
+): fetchingResult is FetchingError<Error> {
+  return fetchingResult.type === 'error';
+}
+
 export type TableFetchingResult<Data, Error> =
-  | { type: 'success'; data: Data }
-  | { type: 'error'; error: Error };
+  | FetchingSuccess<Data>
+  | FetchingError<Error>;
 
 export interface DataFetchingState<Data, Error> {
   loading: boolean;
-  result: TableFetchingResult<Data, Error>;
+  result?: TableFetchingResult<Data, Error>;
 }
 
 /**
