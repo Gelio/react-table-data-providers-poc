@@ -1,29 +1,38 @@
 import { Observable } from 'rxjs';
 
-export interface TableData<RowData> {
+export type TableData<Data, Error> =
+  | { type: 'success'; data: Data }
+  | { type: 'error'; error: Error };
+
+export interface DataFetchingState<Data, Error> {
   loading: boolean;
-  error?: any;
-  // NOTE: it's probalbly better to allow consumers to use any kind of data, not an array.
-  rows?: RowData[];
+  data: TableData<Data, Error>;
 }
 
-export type TableData$<RowData> = Observable<TableData<RowData>>;
+export type DataFetchingState$<Data, Error> = Observable<
+  DataFetchingState<Data, Error>
+>;
 
+/**
+ * Parameters for backend requests
+ *
+ * Can be used to simulate client-side pagination
+ */
 export interface TableDataParams {
   pageSize: number;
   page: number;
   searchPhrase: string;
-}
 
-export interface TableDataParamsWithRequestId extends TableDataParams {
-  // NOTE: used to trigger refetches. If requestId changed, force sending the request
-  // Used in clientside pagination
+  // NOTE: used to trigger refetches. If requestId changed, force sending the request again
   requestId: string;
+
+  // TODO: add sorting rules
+  // TODO: add filter criteria
 }
 
-export type TableDataGetter<RowData> = (
-  params: TableDataParamsWithRequestId
-) => TableData$<RowData>;
+export type TableDataGetter<Data, Error> = (
+  params$: Observable<TableDataParams>
+) => DataFetchingState$<Data, Error>;
 
 // ---------------------------------------
 
@@ -33,7 +42,7 @@ export interface TableDataProvider<RowData> {
   setSearchPhrase(searchPhrase: string): void;
   refresh(): void;
 
-  tableData$: TableData$<RowData>;
+  tableData$: DataFetchingState$<RowData>;
 }
 
 // ---------------------------------------
@@ -41,7 +50,7 @@ export interface TableDataProvider<RowData> {
 export interface FunctionalTableDataProvider<RowData> {
   refresh(): void;
 
-  tableData$: TableData$<RowData>;
+  tableData$: DataFetchingState$<RowData>;
 }
 
 export type FunctionalTableDataProviderFactory<RowData> = (
