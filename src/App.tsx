@@ -100,11 +100,6 @@ export default function App() {
     stateProvider.tableState$
   );
 
-  useEffect(() => {
-    // NOTE: initial fetch
-    // stateProvider.refresh();
-  }, [stateProvider]);
-
   const moveToPreviousPage = () => stateProvider.setPage(tableState!.page - 1);
   const moveToNextPage = () => stateProvider.setPage(tableState!.page + 1);
 
