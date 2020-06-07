@@ -57,6 +57,28 @@ const todoReferences = {
   ),
 };
 
+/**
+ * TODO: consider composing as follows
+ *
+ * composeDataGetters(
+    mainEntityDataGetter,
+    getRefResolvingDataGetter(todoReferences, resolveTodoReferences),
+    getClientsidePaginatedDataGetter(todoFilter)
+    )
+ *
+ *
+ * equivalent to:
+ *
+ * getClientsidePaginatedDataGetter(
+    getRefResolvingDataGetter(
+      serversideDataGetterWithoutPagination,
+      todoReferences,
+      resolveTodoReferences
+    ),
+    todoFilter
+  ),
+ */
+
 const todoFilter: FilterFunction<Todo> = (todo, searchPhrase) =>
   todo.title.includes(searchPhrase);
 
