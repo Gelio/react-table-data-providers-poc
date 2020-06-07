@@ -1,17 +1,13 @@
 import { Observable } from 'rxjs';
 
-export type TableData<Data, Error> =
+export type TableFetchingResult<Data, Error> =
   | { type: 'success'; data: Data }
   | { type: 'error'; error: Error };
 
 export interface DataFetchingState<Data, Error> {
   loading: boolean;
-  data: TableData<Data, Error>;
+  result: TableFetchingResult<Data, Error>;
 }
-
-export type DataFetchingState$<Data, Error> = Observable<
-  DataFetchingState<Data, Error>
->;
 
 /**
  * Parameters for backend requests
@@ -32,27 +28,4 @@ export interface TableDataParams {
 
 export type TableDataGetter<Data, Error> = (
   params$: Observable<TableDataParams>
-) => DataFetchingState$<Data, Error>;
-
-// ---------------------------------------
-
-export interface TableDataProvider<RowData> {
-  setPageSize(pageSize: number): void;
-  setPage(page: number): void;
-  setSearchPhrase(searchPhrase: string): void;
-  refresh(): void;
-
-  tableData$: DataFetchingState$<RowData>;
-}
-
-// ---------------------------------------
-
-export interface FunctionalTableDataProvider<RowData> {
-  refresh(): void;
-
-  tableData$: DataFetchingState$<RowData>;
-}
-
-export type FunctionalTableDataProviderFactory<RowData> = (
-  params$: Observable<TableDataParams>
-) => FunctionalTableDataProvider<RowData>;
+) => Observable<DataFetchingState<Data, Error>>;
