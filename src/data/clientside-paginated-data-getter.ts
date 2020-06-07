@@ -27,9 +27,12 @@ export interface TableDataWithCount<RowData extends Entity> {
 }
 
 // NOTE: used for filtering, searching, etc.
-type FilterFunction<RowData> = (row: RowData, searchPhrase: string) => boolean;
+export type FilterFunction<RowData> = (
+  row: RowData,
+  searchPhrase: string
+) => boolean;
 // TODO: handle `sortingRules` as a 2nd parameter
-type SortingFunction<RowData> = (rows: RowData[]) => RowData[];
+export type SortingFunction<RowData> = (rows: RowData[]) => RowData[];
 
 // TODO: how to swap the filter function without creating a new DataGetter?
 
