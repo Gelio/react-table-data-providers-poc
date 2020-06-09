@@ -24,6 +24,7 @@ import {
 } from './data/ref-resolving-data-getter';
 import { createTableStateProvider } from './data/state-provider';
 import { isDefined } from './utils/is-defined';
+import { pollingDataGetter } from './data/polling-data-getter';
 
 const serversideDataGetterWithPagination = getTodosDataGetterFactory(
   mapParamsToQueryStringFactory({ pagination: true, searching: true })
@@ -87,6 +88,11 @@ const dataGetters: Record<
   TableDataGetter<TableDataWithCount<Todo>, any>
 > = {
   serverside: serversideDataGetterWithPagination,
+
+  serversidePolling: pollingDataGetter(
+    serversideDataGetterWithPagination,
+    2000
+  ),
 
   // NOTE: simulate that some number is needed (can be fetched from the network)
   serversideWithReferences: getRefResolvingDataGetter(
